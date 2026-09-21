@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "perf-hunter"
+version = "0.1.0"
+description = "Find performance regressions, and measure how often the gate cries wolf"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "hammasbuilds" }]
+keywords = ["benchmark", "performance", "regression", "ci", "statistics", "bootstrap", "permutation test"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+]
+# No runtime dependencies. The permutation test and the bootstrap are about twenty lines
+# each; pulling in numpy or scipy to run them would be the tail wagging the dog.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+perf-hunter = "perf_hunter.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hammasbuilds/perf-hunter"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/perf_hunter"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

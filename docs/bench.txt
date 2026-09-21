@@ -1,0 +1,28 @@
+==============================================================================
+PERF-HUNTER - how often it cries wolf, and what it can see
+==============================================================================
+Windows-11-10.0.26200-SP0, 16 cpus, python 3.14.7
+25 samples per side, 2% threshold, 5 workloads, 116.5s
+
+------------------------------------------------------------------------------
+FALSE ALARMS - identical code on both sides, so every alarm is wrong
+------------------------------------------------------------------------------
+schedule        trials   false alarms     rate   noisy    worst
+sequential         200             13      6%      38   104.2%
+interleaved        200              0      0%      35    15.1%
+paired             200              0      0%      31    22.7%
+
+  lowest false-alarm rate: interleaved
+
+------------------------------------------------------------------------------
+POWER - a slowdown of known size, injected on one side
+------------------------------------------------------------------------------
+asked      achieved  trials  detected    power  missed
+1%             2.9%      60        18     30%      32
+2%             0.9%      60        19     32%      36
+5%             7.1%      60        23     38%      17
+10%           12.3%      60        36     60%      12
+25%           28.9%      60        37     62%       0
+
+  'asked' is the nominal factor; 'achieved' is what the injection actually
+  cost, measured separately. The second is the one that means anything.

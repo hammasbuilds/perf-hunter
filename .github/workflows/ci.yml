@@ -1,0 +1,28 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+      - run: uv sync --all-extras
+
+      - name: Lint
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+      # The suite feeds synthetic distributions to the statistics, so it is deterministic
+      # and does not time anything - a timing assertion on a shared CI runner would be
+      # flaky by construction. The machine-dependent numbers come from
+      # `perf-hunter self-check` and live in docs/RESULTS.md.
+      - name: Test
+        run: uv run pytest -q
