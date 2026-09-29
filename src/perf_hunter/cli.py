@@ -98,6 +98,19 @@ def main(argv: list[str] | None = None) -> int:
 
     a = p.parse_args(argv)
 
+    # `--samples 0` (or negative) is not a smaller benchmark, it is no data at all: an
+    # empty `run` prints a fabricated-looking "0.0 ns", and an empty `compare` reaches
+    # `stats.compare`'s empty-input fallback and reports a confident `SAME +0.0% to
+    # +0.0%` verdict on nothing. Both are silently wrong rather than refused, so reject
+    # the input here instead of letting it reach the statistics.
+    if a.cmd in ("compare", "run", "self-check") and a.samples < 2:
+        p.error("--samples must be >= 2 (need at least two timings per side to compare)")
+    if a.cmd == "self-check":
+        if a.repeats < 1:
+            p.error("--repeats must be >= 1")
+        if a.power_repeats < 1:
+            p.error("--power-repeats must be >= 1")
+
     if a.cmd == "self-check":
         res = bench_mod.run(
             repeats=a.repeats,

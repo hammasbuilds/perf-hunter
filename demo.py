@@ -34,8 +34,8 @@ def main() -> int:
         print("\nself-check failed - that is the demo working, not a broken demo.", flush=True)
         return result.returncode
     print("\nPoint it at your own code with:", flush=True)
-    print("    perf-hunter compare <baseline-ref> <candidate-ref>", flush=True)
-    print("    perf-hunter run <path>", flush=True)
+    print("    perf-hunter compare <path/to/bench_file.py> --before <git-ref>", flush=True)
+    print("    perf-hunter run <path/to/bench_file.py>", flush=True)
     return 0
 
 
