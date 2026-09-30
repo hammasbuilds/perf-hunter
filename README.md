@@ -2,13 +2,12 @@
 <p align="center"><i>A performance gate is only worth having if you know how often it cries wolf. So measure that first.</i></p>
 
 <p align="center">
-  <a href="#the-through-line">The through-line</a> &middot;
-  <a href="#the-result">The result</a> &middot;
+  <a href="#what-it-does">What it does</a> &middot;
+  <a href="#results">Results</a> &middot;
   <a href="docs/RESULTS.md">Full results</a> &middot;
   <a href="#how-it-works">How it works</a> &middot;
   <a href="#run-it">Run it</a> &middot;
-  <a href="#what-this-does-not-do">What it does NOT do</a> &middot;
-  <a href="#problems-hit-while-building-this">Problems hit</a>
+  <a href="#scope">Scope</a> 
 </p>
 
 <p align="center">
@@ -22,7 +21,7 @@
 
 ---
 
-## The through-line
+## What it does
 
 ```mermaid
 flowchart LR
@@ -47,7 +46,7 @@ should let it fail a build.
 It is measurable, and it needs no ground truth: run the same function against *itself*. Every
 regression reported is wrong by construction.
 
-## The result
+## Results
 
 Five workloads, identical code on both sides, 200 trials per schedule. **Every alarm here is
 a false alarm.**
@@ -143,7 +142,7 @@ src/perf_hunter/
   report.py     the interval beside every verdict
 ```
 
-## What this does NOT do
+## Scope
 
 - **It cannot detect a 1% regression on a busy machine.** Nothing can. The honest output is
   a wide interval and a `NOISY` verdict, and this reports that instead of a coin flip.
@@ -161,27 +160,6 @@ src/perf_hunter/
 - **The injected slowdowns are synthetic.** They repeat the same work rather than doing
   something new, so they perturb only duration — not cache behaviour, not allocation
   patterns. A real regression is often worse than its percentage suggests.
-
-## Problems hit while building this
-
-- **The first schedule comparison rested on one false alarm out of 30.** Sequential showed
-  3%, interleaved 0%, and it would have been easy to write that up. At 200 trials per
-  schedule the real gap is 6% against 0% — the same conclusion, but the first version had no
-  business claiming it.
-- **The power curve was labelled with numbers that were not true.** Asking for a 1% slowdown
-  produced 2.9%, and asking for 2% produced 0.9%: the wrapper's own bookkeeping is a large
-  share of a 1% target, and it varies per workload. The benchmark now measures what the
-  injection *actually* cost, separately and at greater length, and reports power against
-  that.
-- **A test asserted something that could never fail.** `assert a != b or True` passes
-  whatever happens. It was checking that different seeds give different orders — which two
-  seeds can violate by chance, so the honest version tests reproducibility only.
-- **The permutation test looked broken and was not.** A fixture of thirty `1.0`s against
-  thirty `5.0`s makes the median a step function: any split other than exactly 15/15 puts
-  both halves at opposite extremes, so nearly every shuffle reproduces the full difference.
-  The test was measuring its own fixture.
-- **Two benchmark runs raced on the same output file**, interleaving their progress lines
-  into nonsense. The JSON survived intact and the report is rebuilt from it.
 
 ## Also worth reading
 
