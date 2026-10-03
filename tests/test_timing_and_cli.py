@@ -236,3 +236,53 @@ def test_the_rng_is_not_shared_between_schedules():
     first = list(schedule.paired(5, rng))
     rng2 = random.Random(0)
     assert first == list(schedule.paired(5, rng2))
+
+
+SLOW_BEFORE = "def bench_squares():\n    return sum(i * i for i in range(20000))\n"
+SLOW_AFTER = "def bench_squares():\n    return sum(i * i for i in range(40000))\n"
+
+
+def test_a_real_2x_slowdown_fails_the_build(tmp_path, capsys):
+    root = tmp_path / "s"
+    root.mkdir()
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "config", "user.email", "t@example.invalid")
+    _git(root, "config", "user.name", "t")
+    (root / "bench_x.py").write_text(SLOW_BEFORE, encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "first")
+    (root / "bench_x.py").write_text(SLOW_AFTER, encoding="utf-8")
+    code = main(
+        [
+            "compare",
+            str(root / "bench_x.py"),
+            "--repo",
+            str(root),
+            "--samples",
+            "20",
+            "--quiet",
+            "--fail-on-regression",
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 1, out
+    assert "slower, and the whole interval is above" in out
+
+
+def test_noisy_is_not_a_pass_under_fail_on_regression(repo, monkeypatch):
+    from perf_hunter import cli, verdict
+    from perf_hunter.stats import Comparison
+
+    wide = Comparison(ratio=1.1, low=0.9, high=1.4, p=0.3, n_before=8, n_after=8)
+    monkeypatch.setattr(cli.stats, "compare", lambda *a, **k: wide)
+    args = ["compare", str(repo / "b.py"), "--repo", str(repo), "--samples", "8", "--quiet"]
+    assert main([*args, "--fail-on-regression"]) == cli.EXIT_NOISY
+    assert main([*args, "--fail-on-regression", "--allow-noisy"]) == 0
+    assert main(args) == 0
+    assert verdict.judge("x", wide).call is verdict.Call.NOISY
+
+
+def test_the_readme_example_bench_file_runs(capsys):
+    bench = Path(__file__).resolve().parents[1] / "benchmarks" / "bench_core.py"
+    assert main(["run", str(bench), "--samples", "5"]) == 0
+    assert "sum_of_squares" in capsys.readouterr().out

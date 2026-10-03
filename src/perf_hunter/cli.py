@@ -12,6 +12,9 @@ from pathlib import Path
 from perf_hunter import bench as bench_mod
 from perf_hunter import report, schedule, stats, timing, verdict
 
+#: --fail-on-regression found no regression, but at least one benchmark was NOISY.
+EXIT_NOISY = 3
+
 
 def _say(msg: str) -> None:
     print(f"  .. {msg}", file=sys.stderr, flush=True)
@@ -75,7 +78,13 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument(
         "--fail-on-regression",
         action="store_true",
-        help="exit 1 if any regression is called",
+        help="exit 1 if any regression is called; exit 3 if none is but a benchmark is "
+        "NOISY (unreadable is not a pass)",
+    )
+    c.add_argument(
+        "--allow-noisy",
+        action="store_true",
+        help="with --fail-on-regression, let NOISY benchmarks exit 0 instead of 3",
     )
     c.add_argument("--quiet", action="store_true")
 
@@ -205,8 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"\nwrote {a.json}")
 
-    if a.fail_on_regression and any(v.fails_build for v in verdicts):
-        return 1
+    if a.fail_on_regression:
+        if any(v.fails_build for v in verdicts):
+            return 1
+        if not a.allow_noisy and any(v.call is verdict.Call.NOISY for v in verdicts):
+            return EXIT_NOISY
     return 0
 
 

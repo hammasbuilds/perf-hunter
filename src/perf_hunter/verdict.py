@@ -3,7 +3,11 @@
     REGRESSION   slower, by more than the threshold, with the interval clear of it
     FASTER       the same, in the other direction
     SAME         the interval is inside the threshold - measured, and small enough not to care
-    NOISY        the interval is too wide to say anything
+    NOISY        the interval straddles the threshold and is too wide to say anything
+
+Order matters: a wide interval whose conservative end is already past the threshold is
+still a REGRESSION (or FASTER). Width only decides between SAME and NOISY - a 2x slowdown
+measured as +79% to +155% is a regression, however wide that interval is.
 
 The rule that matters is the last one. A p-value alone cannot distinguish "no difference"
 from "no information", and on a loaded machine the second is the common case. A gate that
@@ -79,16 +83,6 @@ def judge(
     max_width: float = DEFAULT_MAX_WIDTH,
 ) -> Verdict:
     width = c.high - c.low
-    if width > max_width:
-        return Verdict(
-            name,
-            Call.NOISY,
-            c,
-            threshold,
-            f"the interval spans {width * 100:.1f}%, wider than the {max_width * 100:.0f}% "
-            f"limit - this says nothing about the code",
-        )
-
     if c.low > 1.0 + threshold:
         return Verdict(
             name,
@@ -105,6 +99,19 @@ def judge(
             c,
             threshold,
             f"at least {(1 - c.high) * 100:.1f}% faster",
+        )
+    if width > max_width:
+        # Only reached when the interval straddles the threshold: a wide interval whose
+        # conservative end already clears it is a proven regression (or speed-up), and
+        # width cannot un-prove that.
+        return Verdict(
+            name,
+            Call.NOISY,
+            c,
+            threshold,
+            f"the interval spans {width * 100:.1f}% ({(c.low - 1) * 100:+.1f}% to "
+            f"{(c.high - 1) * 100:+.1f}%), wider than the {max_width * 100:.0f}% limit and "
+            f"straddling the threshold - this says nothing about the code",
         )
     return Verdict(
         name,

@@ -137,3 +137,36 @@ def test_expected_false_alarms_scales_with_suite_size():
     """Three regressions out of fifty benchmarks is not a finding if two were coming anyway."""
     assert expected_false_alarms(50, 0.05) == pytest.approx(2.5)
     assert expected_false_alarms(1, 0.05) == pytest.approx(0.05)
+
+
+def _c(ratio: float, low: float, high: float) -> Comparison:
+    return Comparison(ratio=ratio, low=low, high=high, p=0.001, n_before=30, n_after=30)
+
+
+def test_a_wide_interval_entirely_above_the_threshold_is_a_regression():
+    # the round-2 report: a 2x slowdown measured +124.2%, interval +78.9% to +154.7%
+    v = judge("x", _c(2.242, 1.789, 2.547))
+    assert v.call is Call.REGRESSION
+    assert v.fails_build
+
+
+def test_a_wide_interval_entirely_below_the_threshold_is_faster():
+    assert judge("x", _c(0.5, 0.35, 0.7)).call is Call.FASTER
+
+
+def test_a_wide_interval_straddling_the_threshold_is_still_noisy():
+    v = judge("x", _c(1.10, 0.95, 1.40))
+    assert v.call is Call.NOISY
+    assert not v.fails_build
+
+
+def test_a_wide_interval_just_short_of_the_threshold_is_noisy_not_regression():
+    assert judge("x", _c(1.30, 1.019, 1.60), threshold=0.02).call is Call.NOISY
+
+
+def test_a_genuine_2x_slowdown_in_samples_is_a_regression_even_with_heavy_noise():
+    a = noisy(1.0, 30, 0.25, 11)
+    b = noisy(2.0, 30, 0.25, 12)
+    c = compare(a, b, rounds=500)
+    assert c.high - c.low > 0.10  # wide: the old rule called this NOISY
+    assert judge("x", c).call is Call.REGRESSION
