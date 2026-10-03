@@ -1,2 +1,40 @@
-PH BENCH DONE
-PH BENCH DONE
+  .. false alarms: arithmetic / sequential done
+  .. false alarms: arithmetic / interleaved done
+  .. false alarms: arithmetic / paired done
+  .. false alarms: build_dict / sequential done
+  .. false alarms: build_dict / interleaved done
+  .. false alarms: build_dict / paired done
+  .. false alarms: sort_numbers / sequential done
+  .. false alarms: sort_numbers / interleaved done
+  .. false alarms: sort_numbers / paired done
+  .. false alarms: regex_scan / sequential done
+  .. false alarms: regex_scan / interleaved done
+  .. false alarms: regex_scan / paired done
+  .. false alarms: string_join / sequential done
+  .. false alarms: string_join / interleaved done
+  .. false alarms: string_join / paired done
+  .. power: arithmetic at 1% done
+  .. power: arithmetic at 2% done
+  .. power: arithmetic at 5% done
+  .. power: arithmetic at 10% done
+  .. power: arithmetic at 25% done
+  .. power: build_dict at 1% done
+  .. power: build_dict at 2% done
+  .. power: build_dict at 5% done
+  .. power: build_dict at 10% done
+  .. power: build_dict at 25% done
+  .. power: sort_numbers at 1% done
+  .. power: sort_numbers at 2% done
+  .. power: sort_numbers at 5% done
+  .. power: sort_numbers at 10% done
+  .. power: sort_numbers at 25% done
+  .. power: regex_scan at 1% done
+  .. power: regex_scan at 2% done
+  .. power: regex_scan at 5% done
+  .. power: regex_scan at 10% done
+  .. power: regex_scan at 25% done
+  .. power: string_join at 1% done
+  .. power: string_join at 2% done
+  .. power: string_join at 5% done
+  .. power: string_join at 10% done
+  .. power: string_join at 25% done

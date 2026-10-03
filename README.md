@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
   <img src="https://img.shields.io/badge/model-none%20required-success" alt="no model">
-  <img src="https://img.shields.io/badge/tests-42-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/tests-50-brightgreen" alt="tests">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
 </p>
 
@@ -28,11 +28,11 @@ flowchart LR
     O["old code"] --> S["sample A/B/A/B<br/>not AAA then BBB"]
     N["new code"] --> S
     S --> M["median ratio<br/>+ bootstrap interval"]
-    M --> W{"interval<br/>readable?"}
-    W -->|no| NOISY["NOISY<br/>no verdict"]
-    W -->|yes| T{"whole interval<br/>past the threshold?"}
+    M --> T{"whole interval<br/>past the threshold?"}
     T -->|yes| REG["REGRESSION"]
-    T -->|no| SAME["SAME"]
+    T -->|no| W{"interval<br/>narrow?"}
+    W -->|no| NOISY["NOISY<br/>no verdict"]
+    W -->|yes| SAME["SAME"]
 
     style S fill:#2563eb,color:#fff
     style NOISY fill:#b45309,color:#fff
@@ -53,12 +53,12 @@ a false alarm.**
 
 | sampling schedule | trials | false alarms | rate | worst reading |
 |---|---:|---:|---:|---:|
-| `sequential` — all of A, then all of B | 200 | **13** | **6%** | **+104.2%** |
-| `interleaved` — A, B, A, B | 200 | **0** | **0%** | +15.1% |
-| `paired` — A and B per round, order shuffled | 200 | **0** | **0%** | +22.7% |
+| `sequential` — all of A, then all of B | 200 | **41** | **20.5%** | **+68.2%** |
+| `interleaved` — A, B, A, B | 200 | **1** | **0.5%** | +19.9% |
+| `paired` — A and B per round, order shuffled | 200 | **0** | **0%** | +33.9% |
 
-Sampling one version to exhaustion and then the other reported a **104% slowdown on code
-that had not changed**. Everything that drifts on a machine — thermal throttling, another
+Sampling one version to exhaustion and then the other reported a **68% slowdown on code
+that had not changed**, and one trial in five called a difference that was not there. Everything that drifts on a machine — thermal throttling, another
 process starting, the allocator's arena growing — drifts *between* those two blocks and
 lands entirely on one side. No amount of statistical care recovers from it: the test is
 handed a real difference, it just is not a difference about the software.
@@ -69,15 +69,15 @@ Interleaving fixes it by construction, and the fix is worth more than the statis
 
 | asked for | actually injected | trials | detected | **missed** |
 |---:|---:|---:|---:|---:|
-| 1% | 2.9% | 60 | 30% | 32 |
-| 2% | 0.9% | 60 | 32% | 36 |
-| 5% | 7.1% | 60 | 38% | 17 |
-| 10% | 12.3% | 60 | 60% | 12 |
-| 25% | 28.9% | 60 | 62% | **0** |
+| 1% | 3.5% | 60 | 15% | 29 |
+| 2% | 5.7% | 60 | 20% | 26 |
+| 5% | 7.3% | 60 | 25% | 20 |
+| 10% | 13.8% | 60 | 32% | 10 |
+| 25% | 28.1% | 60 | 62% | 5 |
 
-**At a real 29% slowdown it missed nothing** — but it only *called* 62% of them. The other
-38% were reported `NOISY`: the interval was too wide to say anything, so it refused rather
-than guessing. That is the designed behaviour, and it is why "detected" and "missed" are
+**At a real 28% slowdown it called 62% and missed 5 of 60.** The other 18 were reported
+`NOISY`: the interval straddled the threshold and was too wide to say anything, so it refused
+rather than guessing. That is the designed behaviour, and it is why "detected" and "missed" are
 separate columns.
 
 This machine was busy while the numbers were taken — a GPU job and three dozen other Python
@@ -105,6 +105,11 @@ measurable, and not worth anybody's afternoon.
 at least `--threshold` big at the *conservative* end of the interval. Gating on `p` alone
 fails every build, gets muted within a week, and then catches nothing.
 
+**Width never overrides a proven result.** If the conservative end of the interval clears the
+threshold, the call is `REGRESSION` (or `FASTER`) however wide the interval is: a 2x slowdown
+measured as +79% to +155% is a regression. `NOISY` is only for wide intervals that straddle
+the threshold.
+
 **`NOISY` is a distinct verdict.** A p-value cannot tell "no difference" from "no
 information", and on a loaded machine the second is the common case. A gate that reports
 `SAME` when it means `NOISY` is a green tick nobody earned.
@@ -120,10 +125,17 @@ uv venv && uv pip install -e ".[dev]"
 perf-hunter self-check
 
 # a file of bench_* functions, this revision against a git ref
-perf-hunter compare benchmarks/bench_core.py --before origin/main
-perf-hunter compare benchmarks/bench_core.py --before HEAD~1 --fail-on-regression
 perf-hunter run benchmarks/bench_core.py          # just time them
+perf-hunter compare benchmarks/bench_core.py --before HEAD
+perf-hunter compare benchmarks/bench_core.py --before HEAD --fail-on-regression --json out.json
 ```
+
+`benchmarks/bench_core.py` ships as an example; edit it (or point at your own file of
+`bench_*` functions) and compare against any ref that contains the file.
+
+Exit codes for `compare --fail-on-regression`: **0** no regression and nothing unreadable,
+**1** a regression was called, **3** no regression but at least one benchmark was `NOISY`
+(unreadable is not a pass; add `--allow-noisy` to let it exit 0), **2** bad ref or file.
 
 `compare` reads the old side with `git show`, so it never touches the working tree. Needs no
 model, no API key, no runtime dependencies — the permutation test and the bootstrap are about
